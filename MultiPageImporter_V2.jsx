@@ -136,10 +136,6 @@ for (i = 0; i < theFiles.length; i++) {
 	fileNames[i] = File.decode(theFiles[i].name);
 }
 
-var theFile = theFiles[0];
-var fileName = fileNames[0];
-var placementINFO = placementINFOs[0];
-
 // If there is no document open, create a new one using the size of the
 // first encountered page
 var theDocIsMine = false; // Is the doc created by this script boolean
@@ -156,25 +152,16 @@ if(app.documents.length == 0)
 	app.marginPreferences.bottom = 0;
 	app.marginPreferences.left = 0;
 	app.marginPreferences.right = 0;
-
-	if(placementINFO.kind == PDF_DOC)
-	{
-		app.viewPreferences.verticalMeasurementUnits = MeasurementUnits.points;
-		app.viewPreferences.horizontalMeasurementUnits = MeasurementUnits.points;
-	}
-	else
-	{
-		app.viewPreferences.verticalMeasurementUnits = placementINFO.vUnits;
-		app.viewPreferences.horizontalMeasurementUnits = placementINFO.hUnits;
-	}
+	app.viewPreferences.verticalMeasurementUnits = MeasurementUnits.points;
+	app.viewPreferences.horizontalMeasurementUnits = MeasurementUnits.points;
 
 	// Make the new doc:
 	var theDoc = app.documents.add();
     theDocIsMine = true;
 	theDoc.documentPreferences.facingPages = false;
 	theDoc.marginPreferences.columnCount = 1;
-	theDoc.documentPreferences.pageWidth = placementINFO.pgSize.width;
-	theDoc.documentPreferences.pageHeight = placementINFO.pgSize.height;
+	theDoc.documentPreferences.pageWidth = placementINFOs[0].pgSize.width;
+	theDoc.documentPreferences.pageHeight = placementINFOs[0].pgSize.height;
 	theDoc.viewPreferences.verticalMeasurementUnits = oldUnitsV;
 	theDoc.viewPreferences.horizontalMeasurementUnits = oldUnitsH;
 
@@ -221,10 +208,7 @@ if(dLog.show() == 1)
 	percX = Number(dLog.percX.text);
 	percY = Number(dLog.percY.text);
 	rotate = dLog.rotate.selection.index;
-	if(placementINFO.kind == PDF_DOC)
-	{
-		doTransparent = dLog.doTransparent.value;
-	}
+	doTransparent = dLog.doTransparent.value;
 	ignoreErrors = dLog.ignoreErrors.value;
 	placeOnLayer = dLog.placeOnLayer.value;
 	// indUpdateType = dLog.indUpdateType.selection; // Removed 6/25/08
@@ -307,17 +291,10 @@ var docWidth = theDoc.documentPreferences.pageWidth;
 var docHeight = theDoc.documentPreferences.pageHeight;
 
 // Set placement prefs
-if(placementINFO.kind == PDF_DOC)
+with(app.pdfPlacePreferences)
 {
-	with(app.pdfPlacePreferences)
-	{
-		transparentBackground = doTransparent;
-		pdfCrop = cropTypes[cropType];
-	}
-}
-else
-{
-	app.importedPageAttributes.importedPageCrop = cropTypes[cropType];
+	transparentBackground = doTransparent;
+	pdfCrop = cropTypes[cropType];
 }
 
 // Block errors if requested
@@ -427,12 +404,7 @@ switch(positionType)
 		break;
 }
 
-var startPage = 1;
-var endPage = placementINFOs[0].pgCount;
-var documentPageStart = theDoc.pages.length + 1
-
-addPages(0, documentPageStart, startPage, endPage);
-
+addPages(0, docStartPG, 1, placementINFOs[0].pgCount);
 
 // Kill the Object style
 tempObjStyle.remove();
@@ -851,7 +823,7 @@ function savePrefs(firstRun)
 		try
 		{
 			var newPrefs =
-			((!firstRun && placementINFO.kind == PDF_DOC) ? cropType: pdfCropType) + "\n" +
+			(!firstRun ? cropType: pdfCropType) + "\n" +
 			positionType + "\n" +
 			offsetX + "\n" +
 			offsetY + "\n" +
@@ -863,7 +835,7 @@ function savePrefs(firstRun)
 			((ignoreErrors)?1:0) + "\n" +
 			percX + "\n" +
 			percY + "\n" +
-			((!firstRun && placementINFO.kind == IND_DOC) ? cropType : indCropType) + "\n" +
+			((!firstRun && placementINFOs[0].kind == IND_DOC) ? cropType : indCropType) + "\n" +
 			((mapPages)?1:0) + "\n" + /* added 9/7/08 */
 			((reverseOrder)?1:0) + "\n" +/* added 1/17/09 */
 			rotate; /* added 3/6/09 */
@@ -1486,13 +1458,13 @@ function onCANclicked()
 // Validate the start page
 function startPGValidator()
 {
-	pageValidator(dLog.startPG, placementINFO.pgCount, "start");
+	pageValidator(dLog.startPG, placementINFOs[0].pgCount, "start");
 }
 
 // Validate the end page
 function endPGValidator()
 {
-	pageValidator(dLog.endPG, placementINFO.pgCount, "end");
+	pageValidator(dLog.endPG, placementINFOs[0].pgCount, "end");
 }
 
 
@@ -1630,7 +1602,7 @@ function createMappingDialog(pdfStart, pdfEnd, numArray)
 	var temp;
 	
 	mapDlog =  new Window('dialog', "Map Pages");
-	mapDlog.add("statictext", [10,15,380,35], "Map " + placementINFO.kind + " pages to desired Document pages (" + placementINFO.kind + "->Doc):");
+	mapDlog.add("statictext", [10,15,380,35], "Map PDF pages to desired Document pages (PDF->Doc):");
 
 	// Dynamically create controls
 	while(numDone < numPDFPages)
