@@ -98,15 +98,15 @@ else
 var askIt = "Select a PDF, PDF compatible AI or InDesign file to place:";
 if (File.fs =="Windows")
 {
-	var theFile = File.openDialog(askIt, "Placeable: *.indd;*.pdf;*.ai");
+	var theFile = File.openDialog(askIt, "Placeable: *.indd;*.pdf;*.ai", true);
 }
 else if (File.fs == "Macintosh")
 {
-	var theFile = File.openDialog(askIt, macFileFilter);
+	var theFile = File.openDialog(askIt, macFileFilter, true);
 }
 else
 {
-	var theFile = File.openDialog(askIt);
+	var theFile = File.openDialog(askIt, true);
 }
 
 // Check  if cancel was clicked
