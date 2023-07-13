@@ -107,11 +107,11 @@ else if (File.fs == "Macintosh")
 }
 else
 {
-	var theFiles = File.openDialog(askIt, true);
+	var theFiles = File.openDialog(askIt, null, true);
 }
 
 // Check  if cancel was clicked
-if (theFiles.length == 0 || theFiles  == null)
+if (theFiles  == null || theFiles.length == 0)
 {
 	// user clicked cancel, just leave
 	exit();
@@ -234,8 +234,7 @@ else
 var currentLayer = theDoc.activeLayer;
 var docPgCount = theDoc.pages.length;
 
-// Get and display the dialog
-dLog = makeDialog();
+dLog = makeDialog(placementINFO);
 dLog.center(); // Center dialog in screen
 
 if(dLog.show() == 1)
@@ -347,7 +346,7 @@ var docWidth = theDoc.documentPreferences.pageWidth;
 var docHeight = theDoc.documentPreferences.pageHeight;
 
 // Set placement prefs
-if(placementINFO.kind == PDF_DOC)
+if(placementINFO[0].kind == PDF_DOC)
 {
 	with(app.pdfPlacePreferences)
 	{
@@ -547,7 +546,7 @@ function addPages(docStartPG, startPG, endPG)
 		// Place the current PDF/Ind page into the rectangle object
 		try
 		{
-			var tempGraphic = theRect.place(theFile)[0];
+			var tempGraphic = theRect.place(theFiles[0])[0];
 			/* removed 6/25/08
 			tempGraphic.graphicLayerOptions.updateLinkOption = (indUpdateType == 0) ?
 																							  UpdateLinkOptions.APPLICATION_SETTINGS : 
@@ -648,10 +647,24 @@ function addPages(docStartPG, startPG, endPG)
 	}
 }
 
+function sumPages(data) {
+	var count = 0;
+
+	for (i = 0; i < data.length; i++) {
+		count += data[i].pgCount;
+	}
+
+	return count;
+}
+
 // Create the main dialog box
-function makeDialog()
-{
-	dLog = new Window('dialog', "Import Multiple " + placementINFO.kind + " Pages",
+function makeDialog(data) {
+
+	var dataKind = 'PDF';
+
+	var totalPages = sumPages(data);
+
+	dLog = new Window('dialog', "Import Multiple PDF Pages",
                         "x:100, y:100, width:533, height:365"); // old height before update option removed: 395
 	dLog.onClose = ondLogClosed;
 	
@@ -659,7 +672,7 @@ function makeDialog()
 	/* Upper Left Panel */
 	/******************/
 	dLog.pan1 = dLog.add('panel', [15,15,200,193], "Page Selection");
-	dLog.pan1.add('statictext',  [10,15,170,35], "Import " + placementINFO.kind + " Pages:"); 
+	dLog.pan1.add('statictext',  [10,15,170,35], "Import PDF Pages:");
 
 	if(noPDFError)
 	{
@@ -669,7 +682,7 @@ function makeDialog()
 		dLog.pan1.add('statictext',  [75,45,102,60], "thru"); 
 
 		// End page
-		dLog.endPG = dLog.pan1.add('edittext', [105,40,165,63], placementINFO.pgCount);
+		dLog.endPG = dLog.pan1.add('edittext', [105,40,165,63], totalPages);
 		dLog.endPG.onChange = endPGValidator;
 			
 		// Mapping option
@@ -703,7 +716,7 @@ function makeDialog()
 
 	// Doc start page
 	dLog.pan1.add('statictext',  [10,94,190,109], "Start Placing on Doc Page:"); 
-	dLog.docStartPG = dLog.pan1.add('edittext', [10,114,70,137], "1");
+	dLog.docStartPG = dLog.pan1.add('edittext', [10,114,70,137], app.activeDocument.pages.length + 1);
 	dLog.docStartPG.onChange = docStartPGValidator;
 	
 	/***********************/
@@ -796,7 +809,7 @@ function makeDialog()
 	{
 		dLog.cropType.add('item', cropStrings[i]);
 	}
-	dLog.cropType.selection = (placementINFO.kind == PDF_DOC)? pdfCropType : indCropType;
+	dLog.cropType.selection = (dataKind == PDF_DOC)? pdfCropType : indCropType;
 
 	// Place on Layer
 	dLog.placeOnLayer = dLog.pan4.add('checkbox', [10,44,220,60], "Place Pages on a New Layer");
@@ -823,7 +836,7 @@ function makeDialog()
 	dLog.doTransparent.value = doTransparent;
 	
 	// Disable PDF options if needed
-	if(placementINFO.kind != PDF_DOC)
+	if(dataKind != PDF_DOC)
 	{
 		dLog.doTransparent.enabled = false;
 	}
@@ -929,13 +942,13 @@ function savePrefs(firstRun)
 /********************************************/
 
 function parseFilesInfo(files) {
-	var placementInfoArr = []
+	var placementInfoArr = new Array(files.length);
 
-	for (i = 0; i < files.length; i++) {
-		placementInfoArr.push(getPDFInfo(files[i]), (app.documents.length == 0))
+	for (x = 0; x < files.length; x++) {
+		placementInfoArr[x] = getPDFInfo(files[x])
 	}
 
-	return placementInfoArr
+	return placementInfoArr;
 }
 
 // Extract info from the PDF file.
@@ -951,9 +964,11 @@ function getPDFInfo(theFile, getSize)
 	var nlCount = 0; // number of newline characters per line (1 or 2)
 
 	// The array to hold return values
-	var retArray = new Array();
-	retArray["pgCount"] = -1;
-	retArray["pgSize"] = null;
+	var retArray = {
+		pgCount: -1,
+		pgSize: null,
+		kind: 'PDF'
+	};
 
 	// Open the PDF file for reading
 	theFile.open("r");
@@ -1039,14 +1054,14 @@ function getPDFInfo(theFile, getSize)
 	}
 
 	// Get the offset of the root section and set file position to it
-	var theOffset = getByteOffset(objRef, xrefArray);
+	var theOffset = getByteOffset(objRef, xrefArray, theFile);
 	theFile.seek(theOffset);
 
 	// Determine the obj where the first page is located
 	objRef = getRootPageNode(theFile);
 
 	// Get the offset where the root page nod is located and set the file position to it
-	theOffset = getByteOffset(objRef, xrefArray);
+	theOffset = getByteOffset(objRef, xrefArray, theFile);
 	theFile.seek(theOffset);
 
 	// Get the page count info from the root page tree node section
@@ -1127,7 +1142,7 @@ function getPDFInfo(theFile, getSize)
 				}
 
 				// Get the file offset for the page obj and set file pos to it
-				theOffset = getByteOffset(objRef, xrefArray);
+				theOffset = getByteOffset(objRef, xrefArray, theFile);
 				theFile.seek(theOffset);
 				getOut = false;
 			}
@@ -1297,7 +1312,7 @@ function determineLineLen(theFile)
 // Function that determines the byte offset of an object number
 // Searches the built array of xref sections and reads the offset for theObj
 // *** File position changes in this function. ***
-function getByteOffset(theObj, xrefArray)
+function getByteOffset(theObj, xrefArray, theFile)
 {
 	var theOffset = -1;
 
