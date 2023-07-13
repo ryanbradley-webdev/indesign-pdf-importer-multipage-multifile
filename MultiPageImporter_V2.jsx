@@ -427,31 +427,12 @@ switch(positionType)
 		break;
 }
 
-// Add the pages to the doc based on normal or mapping pages
-if(mapPages && noPDFError)
-{
-	for(pdfPG = startPG; pdfPG <= endPG; pdfPG++)
-	{	
-		i = ddArray[pdfPG%docPgCount].selection.text;
-		if(i == "skip")
-		{
-			continue;
-		}
-		addPages(Number(i), pdfPG, pdfPG); 
-	}
-}
-else if(reverseOrder && noPDFError)
-{
-	for(reverse = endPG; reverse >= startPG; reverse--)
-	{
-		addPages(docStartPG, reverse, reverse);
-		docStartPG++;
-	}
-}
-else
-{
-	addPages(docStartPG, startPG, endPG);
-}
+var startPage = 1;
+var endPage = placementINFOs[0].pgCount;
+var documentPageStart = theDoc.pages.length + 1
+
+addPages(0, documentPageStart, startPage, endPage);
+
 
 // Kill the Object style
 tempObjStyle.remove();
@@ -464,8 +445,11 @@ restoreDefaults(true);
 exit();
 
 // Place the requested pages in the document
-function addPages(docStartPG, startPG, endPG)
+function addPages(idx, docStartPG, startPG, endPG)
 {
+	var file = theFiles[idx];
+	var placement = placementINFOs[idx];
+
 	var currentPDFPg = 0;
 	var firstTime = true;
 	var addedAPage = false;
@@ -474,7 +458,7 @@ function addPages(docStartPG, startPG, endPG)
 	for(i = docStartPG - 1, currentInputDocPg = startPG; currentInputDocPg <= endPG; currentInputDocPg++, i++)
 	{
 
-		if(placementINFO.kind == PDF_DOC)
+		if(placement.kind == PDF_DOC)
 		{
 			// Set the app's PDF placement pref's page number property to the current PDF page number
 			app.pdfPlacePreferences.pageNumber = currentInputDocPg;
@@ -507,7 +491,7 @@ function addPages(docStartPG, startPG, endPG)
 		// Place the current PDF/Ind page into the rectangle object
 		try
 		{
-			var tempGraphic = theRect.place(theFile)[0];
+			var tempGraphic = theRect.place(file)[0];
 			/* removed 6/25/08
 			tempGraphic.graphicLayerOptions.updateLinkOption = (indUpdateType == 0) ?
 																							  UpdateLinkOptions.APPLICATION_SETTINGS : 
@@ -535,7 +519,7 @@ function addPages(docStartPG, startPG, endPG)
 		{
 			if(e.description.indexOf("Failed to open") != -1 )
 			{
-				alert("\"" + fileName + "\" doesn't contain a \"" + cropStrings[cropType] + "\" crop type:\n\nPlease try again by selecting a different crop type or open\nthe PDF in Acrobat and perform a \"Save As...\" command.", "PDF Placement Error");
+				alert("\"" + fileNames[idx] + "\" doesn't contain a \"" + cropStrings[cropType] + "\" crop type:\n\nPlease try again by selecting a different crop type or open\nthe PDF in Acrobat and perform a \"Save As...\" command.", "PDF Placement Error");
 			}
 			else
 			{
@@ -606,6 +590,15 @@ function addPages(docStartPG, startPG, endPG)
 	
 		firstTime = false;
 	}
+
+	if (idx < theFiles.length - 1) {
+		var newIdx = idx + 1;
+		var documentPageStart = theDoc.pages.length + 1
+		var pageStart = 1;
+		var pageEnd = placementINFOs[newIdx].pgCount;
+
+		addPages(idx + 1, documentPageStart, pageStart, pageEnd);
+	}
 }
 
 function sumPages(data) {
@@ -675,7 +668,7 @@ function makeDialog()
 
 	// Doc start page
 	dLog.pan1.add('statictext',  [10,94,190,109], "Start Placing on Doc Page:"); 
-	dLog.docStartPG = dLog.pan1.add('edittext', [10,114,70,137], "1");
+	dLog.docStartPG = dLog.pan1.add('edittext', [10,114,70,137], theDoc.pages.length + 1);
 	dLog.docStartPG.onChange = docStartPGValidator;
 	
 	/***********************/
