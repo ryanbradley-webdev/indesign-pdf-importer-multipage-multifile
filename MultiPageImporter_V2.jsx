@@ -98,81 +98,75 @@ else
 var askIt = "Select a PDF, PDF compatible AI or InDesign file to place:";
 if (File.fs =="Windows")
 {
-	var theFile = File.openDialog(askIt, "Placeable: *.indd;*.pdf;*.ai");
+	var theFiles = File.openDialog(askIt, "Placeable: *.indd;*.pdf;*.ai", true);
 }
 else if (File.fs == "Macintosh")
 {
-	var theFile = File.openDialog(askIt, macFileFilter);
+	var theFiles = File.openDialog(askIt, macFileFilter, true);
 }
 else
 {
-	var theFile = File.openDialog(askIt);
+	var theFiles = File.openDialog(askIt, null, true);
 }
 
 // Check  if cancel was clicked
-if (theFile == null)
+if (theFiles == null || theFiles.length == 0)
 {
 	// user clicked cancel, just leave
 	exit();
 }
 // Check if a file other than PDF or InDesign chosen
-else if((theFile.name.toLowerCase().indexOf(".pdf") == -1 && theFile.name.toLowerCase().indexOf(".ind") == -1 && theFile.name.toLowerCase().indexOf(".ai") == -1 ))
-{
-	 restoreDefaults(false);
-	 throwError("A PDF, PDF compatible AI or InDesign file must be chosen. Quitting...", false, 1, null);
+for (i = 0; i < theFiles.length; i++) {
+	if((theFiles[i].name.toLowerCase().indexOf(".pdf") == -1 && theFiles[i].name.toLowerCase().indexOf(".ind") == -1 && theFiles[i].name.toLowerCase().indexOf(".ai") == -1 ))
+	{
+		restoreDefaults(false);
+		throwError("A PDF, PDF compatible AI or InDesign file must be chosen. Quitting...", false, 1, null);
+	}
 }
 
-var fileName = File.decode(theFile.name);
+var fileNames = new Array(theFiles.length);
+
+for (i = 0; i < theFiles.length; i++) {
+	fileNames[i] = File.decode(theFiles[i].name);
+}
 
 // removed 6/25/08: var indUpdateStrings = ["Use Doc's Layer Visibility","Keep Layer Visibility Overrides"];
 
-if((theFile.name.toLowerCase().indexOf(".pdf") != -1) || (theFile.name.toLowerCase().indexOf(".ai") != -1))
-{
-	// Premedia Systems/JJB Edit Start - 02/14/11 Modified PDFCrop constants to support ID CS3 through CS5 PDFCrop Types.
-	if (appVersion > 6)
-	{
-		// CS5 or newer
-		var cropTypes = [PDFCrop.cropPDF, PDFCrop.cropArt, PDFCrop.cropTrim, PDFCrop.cropBleed, PDFCrop.cropMedia, PDFCrop.cropContentAllLayers, PDFCrop.cropContentVisibleLayers];
-		var cropStrings = ["Crop","Art","Trim","Bleed", "Media","All Layers Bounding Box","Visible Layers Bounding Box"];
-	}
-	else
-	{
-		// CS3 or CS4
-		var cropTypes = [PDFCrop.cropContent, PDFCrop.cropArt, PDFCrop.cropPDF, PDFCrop.cropTrim, PDFCrop.cropBleed, PDFCrop.cropMedia];
-		var cropStrings = ["Bounding Box","Art","Crop","Trim","Bleed", "Media"];
-	}
-	// Premedia Systems/JJB Edit End
-	
-	// Parse the PDF file and extract needed info
+var cropTypes = [PDFCrop.cropPDF, PDFCrop.cropArt, PDFCrop.cropTrim, PDFCrop.cropBleed, PDFCrop.cropMedia, PDFCrop.cropContentAllLayers, PDFCrop.cropContentVisibleLayers];
+var cropStrings = ["Crop","Art","Trim","Bleed", "Media","All Layers Bounding Box","Visible Layers Bounding Box"];
+
+var placementINFOs = new Array();
+
+for (i = 0; i < theFiles.length; i++) {
+	var fileInfo;
+
 	try
 	{
-		var placementINFO = getPDFInfo(theFile, (app.documents.length == 0));
+		fileInfo = getPDFInfo(theFiles[0], (app.documents.length == 0));
 	}
 	catch(e)
 	{
 		// Couldn't determine the PDF info, revert to just adding all the pages
 		noPDFError = false;
-		placementINFO = new Array();
+		fileInfo = new Array();
 		
 		if(app.documents.length == 0)
 		{
 			var tmp = new Array();
 			tmp["width"] = 612;
 			tmp["height"] = 792;
-
-			placementINFO["pgSize"]  = tmp;
+	
+			fileInfo["pgSize"]  = tmp;
 		}
 	}
-	placementINFO["kind"] = PDF_DOC;
+	
+	fileInfo["kind"] = PDF_DOC;
+
+	placementINFOs.push(fileInfo);
 }
-else
-{
-	var cropTypes = [ImportedPageCropOptions.CROP_CONTENT, ImportedPageCropOptions.CROP_BLEED, ImportedPageCropOptions.CROP_SLUG];
-	var cropStrings = ["Page bounding box","Bleed bounding box","Slug bounding box"];
-	// Get the InDesign doc's info
-	var placementINFO = getINDinfo(theFile);
-	placementINFO["kind"] = IND_DOC;
-}
+
+var fileName = theFiles[0].name;
+var placementINFO = placementINFOs[0];
 
 // If there is no document open, create a new one using the size of the
 // first encountered page
@@ -307,7 +301,7 @@ if(placeOnLayer)
 {
 	// Add random number to file name to be layer name.
 	// Double check layer name doesn't exist and alter if it happens to be present for some reason
-	var layerName = fileName + "_" + Math.round(Math.random() * 9999);
+	var layerName = s + "_" + Math.round(Math.random() * 9999);
 	var docLayers = theDoc.layers;
 	for(i=0; i < docLayers.length; i++)
 	{
@@ -1023,14 +1017,14 @@ function getPDFInfo(theFile, getSize)
 	}
 
 	// Get the offset of the root section and set file position to it
-	var theOffset = getByteOffset(objRef, xrefArray);
+	var theOffset = getByteOffset(theFile, objRef, xrefArray);
 	theFile.seek(theOffset);
 
 	// Determine the obj where the first page is located
 	objRef = getRootPageNode(theFile);
 
 	// Get the offset where the root page nod is located and set the file position to it
-	theOffset = getByteOffset(objRef, xrefArray);
+	theOffset = getByteOffset(theFile, objRef, xrefArray);
 	theFile.seek(theOffset);
 
 	// Get the page count info from the root page tree node section
@@ -1111,7 +1105,7 @@ function getPDFInfo(theFile, getSize)
 				}
 
 				// Get the file offset for the page obj and set file pos to it
-				theOffset = getByteOffset(objRef, xrefArray);
+				theOffset = getByteOffset(theFile, objRef, xrefArray);
 				theFile.seek(theOffset);
 				getOut = false;
 			}
@@ -1281,7 +1275,7 @@ function determineLineLen(theFile)
 // Function that determines the byte offset of an object number
 // Searches the built array of xref sections and reads the offset for theObj
 // *** File position changes in this function. ***
-function getByteOffset(theObj, xrefArray)
+function getByteOffset(theFile, theObj, xrefArray)
 {
 	var theOffset = -1;
 
