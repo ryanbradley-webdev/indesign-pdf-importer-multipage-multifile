@@ -94,91 +94,85 @@ else
 	readPrefs();
 }
 
-// Ask user to select the PDF/InDesign files to place
-// Files are saved into an array
+// Ask user to select the PDF/InDesign file to place
 var askIt = "Select a PDF, PDF compatible AI or InDesign file to place:";
 if (File.fs =="Windows")
 {
-	var theFiles = File.openDialog(askIt, "Placeable: *.indd;*.pdf;*.ai", true);
+	var theFile = File.openDialog(askIt, "Placeable: *.indd;*.pdf;*.ai");
 }
 else if (File.fs == "Macintosh")
 {
-	var theFiles = File.openDialog(askIt, macFileFilter, true);
+	var theFile = File.openDialog(askIt, macFileFilter);
 }
 else
 {
-	var theFiles = File.openDialog(askIt, null, true);
+	var theFile = File.openDialog(askIt);
 }
 
 // Check  if cancel was clicked
-if (theFiles  == null || theFiles.length == 0)
+if (theFile == null)
 {
 	// user clicked cancel, just leave
 	exit();
 }
 // Check if a file other than PDF or InDesign chosen
-// else if((theFile.name.toLowerCase().indexOf(".pdf") == -1 && theFile.name.toLowerCase().indexOf(".ind") == -1 && theFile.name.toLowerCase().indexOf(".ai") == -1 ))
-// {
-// 	 restoreDefaults(false);
-// 	 throwError("A PDF, PDF compatible AI or InDesign file must be chosen. Quitting...", false, 1, null);
-// }
-
-var fileNames = [];
-
-for (i = 0; i < theFiles.length; i++) {
-	fileNames.push(File.decode(theFiles[i].name));
+else if((theFile.name.toLowerCase().indexOf(".pdf") == -1 && theFile.name.toLowerCase().indexOf(".ind") == -1 && theFile.name.toLowerCase().indexOf(".ai") == -1 ))
+{
+	 restoreDefaults(false);
+	 throwError("A PDF, PDF compatible AI or InDesign file must be chosen. Quitting...", false, 1, null);
 }
 
+var fileName = File.decode(theFile.name);
+
 // removed 6/25/08: var indUpdateStrings = ["Use Doc's Layer Visibility","Keep Layer Visibility Overrides"];
-var cropTypes = [PDFCrop.cropPDF, PDFCrop.cropArt, PDFCrop.cropTrim, PDFCrop.cropBleed, PDFCrop.cropMedia, PDFCrop.cropContentAllLayers, PDFCrop.cropContentVisibleLayers];
-var cropStrings = ["Crop","Art","Trim","Bleed", "Media","All Layers Bounding Box","Visible Layers Bounding Box"];
-var placementINFO = parseFilesInfo(theFiles);
 
-// if((theFile.name.toLowerCase().indexOf(".pdf") != -1) || (theFile.name.toLowerCase().indexOf(".ai") != -1))
-// {
-// 	// Premedia Systems/JJB Edit Start - 02/14/11 Modified PDFCrop constants to support ID CS3 through CS5 PDFCrop Types.
-// 	if (appVersion > 6)
-// 	{
-// 		// CS5 or newer
-// 		}
-// 	else
-// 	{
-// 		// CS3 or CS4
-// 		var cropTypes = [PDFCrop.cropContent, PDFCrop.cropArt, PDFCrop.cropPDF, PDFCrop.cropTrim, PDFCrop.cropBleed, PDFCrop.cropMedia];
-// 		var cropStrings = ["Bounding Box","Art","Crop","Trim","Bleed", "Media"];
-// 	}
-// 	// Premedia Systems/JJB Edit End
+if((theFile.name.toLowerCase().indexOf(".pdf") != -1) || (theFile.name.toLowerCase().indexOf(".ai") != -1))
+{
+	// Premedia Systems/JJB Edit Start - 02/14/11 Modified PDFCrop constants to support ID CS3 through CS5 PDFCrop Types.
+	if (appVersion > 6)
+	{
+		// CS5 or newer
+		var cropTypes = [PDFCrop.cropPDF, PDFCrop.cropArt, PDFCrop.cropTrim, PDFCrop.cropBleed, PDFCrop.cropMedia, PDFCrop.cropContentAllLayers, PDFCrop.cropContentVisibleLayers];
+		var cropStrings = ["Crop","Art","Trim","Bleed", "Media","All Layers Bounding Box","Visible Layers Bounding Box"];
+	}
+	else
+	{
+		// CS3 or CS4
+		var cropTypes = [PDFCrop.cropContent, PDFCrop.cropArt, PDFCrop.cropPDF, PDFCrop.cropTrim, PDFCrop.cropBleed, PDFCrop.cropMedia];
+		var cropStrings = ["Bounding Box","Art","Crop","Trim","Bleed", "Media"];
+	}
+	// Premedia Systems/JJB Edit End
 	
-// 	// Parse the PDF file and extract needed info
-// 	try
-// 	{
-// 		var placementINFO = getPDFInfo(theFile, (app.documents.length == 0));
-// 	}
-// 	catch(e)
-// 	{
-// 		// Couldn't determine the PDF info, revert to just adding all the pages
-// 		noPDFError = false;
-// 		placementINFO = new Array();
+	// Parse the PDF file and extract needed info
+	try
+	{
+		var placementINFO = getPDFInfo(theFile, (app.documents.length == 0));
+	}
+	catch(e)
+	{
+		// Couldn't determine the PDF info, revert to just adding all the pages
+		noPDFError = false;
+		placementINFO = new Array();
 		
-// 		if(app.documents.length == 0)
-// 		{
-// 			var tmp = new Array();
-// 			tmp["width"] = 612;
-// 			tmp["height"] = 792;
+		if(app.documents.length == 0)
+		{
+			var tmp = new Array();
+			tmp["width"] = 612;
+			tmp["height"] = 792;
 
-// 			placementINFO["pgSize"]  = tmp;
-// 		}
-// 	}
-// 	placementINFO["kind"] = PDF_DOC;
-// }
-// else
-// {
-// 	var cropTypes = [ImportedPageCropOptions.CROP_CONTENT, ImportedPageCropOptions.CROP_BLEED, ImportedPageCropOptions.CROP_SLUG];
-// 	var cropStrings = ["Page bounding box","Bleed bounding box","Slug bounding box"];
-// 	// Get the InDesign doc's info
-// 	var placementINFO = getINDinfo(theFile);
-// 	placementINFO["kind"] = IND_DOC;
-// }
+			placementINFO["pgSize"]  = tmp;
+		}
+	}
+	placementINFO["kind"] = PDF_DOC;
+}
+else
+{
+	var cropTypes = [ImportedPageCropOptions.CROP_CONTENT, ImportedPageCropOptions.CROP_BLEED, ImportedPageCropOptions.CROP_SLUG];
+	var cropStrings = ["Page bounding box","Bleed bounding box","Slug bounding box"];
+	// Get the InDesign doc's info
+	var placementINFO = getINDinfo(theFile);
+	placementINFO["kind"] = IND_DOC;
+}
 
 // If there is no document open, create a new one using the size of the
 // first encountered page
@@ -197,15 +191,15 @@ if(app.documents.length == 0)
 	app.marginPreferences.left = 0;
 	app.marginPreferences.right = 0;
 
-	if(placementINFO[0].kind == PDF_DOC)
+	if(placementINFO.kind == PDF_DOC)
 	{
 		app.viewPreferences.verticalMeasurementUnits = MeasurementUnits.points;
 		app.viewPreferences.horizontalMeasurementUnits = MeasurementUnits.points;
 	}
 	else
 	{
-		app.viewPreferences.verticalMeasurementUnits = placementINFO[0].vUnits;
-		app.viewPreferences.horizontalMeasurementUnits = placementINFO[0].hUnits;
+		app.viewPreferences.verticalMeasurementUnits = placementINFO.vUnits;
+		app.viewPreferences.horizontalMeasurementUnits = placementINFO.hUnits;
 	}
 
 	// Make the new doc:
@@ -213,8 +207,8 @@ if(app.documents.length == 0)
     theDocIsMine = true;
 	theDoc.documentPreferences.facingPages = false;
 	theDoc.marginPreferences.columnCount = 1;
-	theDoc.documentPreferences.pageWidth = placementINFO[0].pgSize.width;
-	theDoc.documentPreferences.pageHeight = placementINFO[0].pgSize.height;
+	theDoc.documentPreferences.pageWidth = placementINFO.pgSize.width;
+	theDoc.documentPreferences.pageHeight = placementINFO.pgSize.height;
 	theDoc.viewPreferences.verticalMeasurementUnits = oldUnitsV;
 	theDoc.viewPreferences.horizontalMeasurementUnits = oldUnitsH;
 
@@ -234,7 +228,8 @@ else
 var currentLayer = theDoc.activeLayer;
 var docPgCount = theDoc.pages.length;
 
-dLog = makeDialog(placementINFO);
+// Get and display the dialog
+dLog = makeDialog();
 dLog.center(); // Center dialog in screen
 
 if(dLog.show() == 1)
@@ -346,7 +341,7 @@ var docWidth = theDoc.documentPreferences.pageWidth;
 var docHeight = theDoc.documentPreferences.pageHeight;
 
 // Set placement prefs
-if(placementINFO[0].kind == PDF_DOC)
+if(placementINFO.kind == PDF_DOC)
 {
 	with(app.pdfPlacePreferences)
 	{
@@ -467,30 +462,30 @@ switch(positionType)
 }
 
 // Add the pages to the doc based on normal or mapping pages
-	// if(mapPages && noPDFError)
-	// {
-	// 	for(pdfPG = startPG; pdfPG <= endPG; pdfPG++)
-	// 	{	
-	// 		i = ddArray[pdfPG%docPgCount].selection.text;
-	// 		if(i == "skip")
-	// 		{
-	// 			continue;
-	// 		}
-	// 		addPages(theFiles[0], Number(i), pdfPG, pdfPG);
-	// 	}
-	// }
-	// else if(reverseOrder && noPDFError)
-	// {
-	// 	for(reverse = endPG; reverse >= startPG; reverse--)
-	// 	{
-	// 		addPages(theFiles[0], docStartPG, reverse, reverse);
-	// 		docStartPG++;
-	// 	}
-	// }
-	// else
-	// {
-	// }
-	addPages(theFiles[0], docStartPG, startPG, Number(placementINFO[0].pgCount));
+if(mapPages && noPDFError)
+{
+	for(pdfPG = startPG; pdfPG <= endPG; pdfPG++)
+	{	
+		i = ddArray[pdfPG%docPgCount].selection.text;
+		if(i == "skip")
+		{
+			continue;
+		}
+		addPages(Number(i), pdfPG, pdfPG); 
+	}
+}
+else if(reverseOrder && noPDFError)
+{
+	for(reverse = endPG; reverse >= startPG; reverse--)
+	{
+		addPages(docStartPG, reverse, reverse);
+		docStartPG++;
+	}
+}
+else
+{
+	addPages(docStartPG, startPG, endPG);
+}
 
 // Kill the Object style
 tempObjStyle.remove();
@@ -503,7 +498,7 @@ restoreDefaults(true);
 exit();
 
 // Place the requested pages in the document
-function addPages(inputFile, docStartPG, startPG, endPG)
+function addPages(docStartPG, startPG, endPG)
 {
 	var currentPDFPg = 0;
 	var firstTime = true;
@@ -546,7 +541,7 @@ function addPages(inputFile, docStartPG, startPG, endPG)
 		// Place the current PDF/Ind page into the rectangle object
 		try
 		{
-			var tempGraphic = theRect.place(inputFile)[0];
+			var tempGraphic = theRect.place(theFile)[0];
 			/* removed 6/25/08
 			tempGraphic.graphicLayerOptions.updateLinkOption = (indUpdateType == 0) ?
 																							  UpdateLinkOptions.APPLICATION_SETTINGS : 
@@ -647,24 +642,10 @@ function addPages(inputFile, docStartPG, startPG, endPG)
 	}
 }
 
-function sumPages(data) {
-	var count = 0;
-
-	for (i = 0; i < data.length; i++) {
-		count += data[i].pgCount;
-	}
-
-	return count;
-}
-
 // Create the main dialog box
-function makeDialog(data) {
-
-	var dataKind = 'PDF';
-
-	var totalPages = sumPages(data);
-
-	dLog = new Window('dialog', "Import Multiple PDF Pages",
+function makeDialog()
+{
+	dLog = new Window('dialog', "Import Multiple " + placementINFO.kind + " Pages",
                         "x:100, y:100, width:533, height:365"); // old height before update option removed: 395
 	dLog.onClose = ondLogClosed;
 	
@@ -672,7 +653,7 @@ function makeDialog(data) {
 	/* Upper Left Panel */
 	/******************/
 	dLog.pan1 = dLog.add('panel', [15,15,200,193], "Page Selection");
-	dLog.pan1.add('statictext',  [10,15,170,35], "Import PDF Pages:");
+	dLog.pan1.add('statictext',  [10,15,170,35], "Import " + placementINFO.kind + " Pages:"); 
 
 	if(noPDFError)
 	{
@@ -682,7 +663,7 @@ function makeDialog(data) {
 		dLog.pan1.add('statictext',  [75,45,102,60], "thru"); 
 
 		// End page
-		dLog.endPG = dLog.pan1.add('edittext', [105,40,165,63], totalPages);
+		dLog.endPG = dLog.pan1.add('edittext', [105,40,165,63], placementINFO.pgCount);
 		dLog.endPG.onChange = endPGValidator;
 			
 		// Mapping option
@@ -716,7 +697,7 @@ function makeDialog(data) {
 
 	// Doc start page
 	dLog.pan1.add('statictext',  [10,94,190,109], "Start Placing on Doc Page:"); 
-	dLog.docStartPG = dLog.pan1.add('edittext', [10,114,70,137], app.activeDocument.pages.length + 1);
+	dLog.docStartPG = dLog.pan1.add('edittext', [10,114,70,137], "1");
 	dLog.docStartPG.onChange = docStartPGValidator;
 	
 	/***********************/
@@ -809,7 +790,7 @@ function makeDialog(data) {
 	{
 		dLog.cropType.add('item', cropStrings[i]);
 	}
-	dLog.cropType.selection = (dataKind == PDF_DOC)? pdfCropType : indCropType;
+	dLog.cropType.selection = (placementINFO.kind == PDF_DOC)? pdfCropType : indCropType;
 
 	// Place on Layer
 	dLog.placeOnLayer = dLog.pan4.add('checkbox', [10,44,220,60], "Place Pages on a New Layer");
@@ -836,7 +817,7 @@ function makeDialog(data) {
 	dLog.doTransparent.value = doTransparent;
 	
 	// Disable PDF options if needed
-	if(dataKind != PDF_DOC)
+	if(placementINFO.kind != PDF_DOC)
 	{
 		dLog.doTransparent.enabled = false;
 	}
@@ -941,16 +922,6 @@ function savePrefs(firstRun)
 /*                                                                */
 /********************************************/
 
-function parseFilesInfo(files) {
-	var placementInfoArr = new Array(files.length);
-
-	for (x = 0; x < files.length; x++) {
-		placementInfoArr[x] = getPDFInfo(files[x], (app.documents.length == 0))
-	}
-
-	return placementInfoArr;
-}
-
 // Extract info from the PDF file.
 // getSize is a boolean that will also determine page size and rotation of first page
 // *** File position changes in this function. ***
@@ -964,11 +935,9 @@ function getPDFInfo(theFile, getSize)
 	var nlCount = 0; // number of newline characters per line (1 or 2)
 
 	// The array to hold return values
-	var retArray = {
-		pgCount: -1,
-		pgSize: null,
-		kind: 'PDF'
-	};
+	var retArray = new Array();
+	retArray["pgCount"] = -1;
+	retArray["pgSize"] = null;
 
 	// Open the PDF file for reading
 	theFile.open("r");
@@ -1054,14 +1023,14 @@ function getPDFInfo(theFile, getSize)
 	}
 
 	// Get the offset of the root section and set file position to it
-	var theOffset = getByteOffset(objRef, xrefArray, theFile);
+	var theOffset = getByteOffset(objRef, xrefArray);
 	theFile.seek(theOffset);
 
 	// Determine the obj where the first page is located
 	objRef = getRootPageNode(theFile);
 
 	// Get the offset where the root page nod is located and set the file position to it
-	theOffset = getByteOffset(objRef, xrefArray, theFile);
+	theOffset = getByteOffset(objRef, xrefArray);
 	theFile.seek(theOffset);
 
 	// Get the page count info from the root page tree node section
@@ -1142,7 +1111,7 @@ function getPDFInfo(theFile, getSize)
 				}
 
 				// Get the file offset for the page obj and set file pos to it
-				theOffset = getByteOffset(objRef, xrefArray, theFile);
+				theOffset = getByteOffset(objRef, xrefArray);
 				theFile.seek(theOffset);
 				getOut = false;
 			}
@@ -1312,7 +1281,7 @@ function determineLineLen(theFile)
 // Function that determines the byte offset of an object number
 // Searches the built array of xref sections and reads the offset for theObj
 // *** File position changes in this function. ***
-function getByteOffset(theObj, xrefArray, theFile)
+function getByteOffset(theObj, xrefArray)
 {
 	var theOffset = -1;
 
